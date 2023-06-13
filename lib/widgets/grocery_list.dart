@@ -34,24 +34,34 @@ class _GroceryListState extends State<GroceryList> {
         actions: [IconButton(onPressed: _addItem, icon: const Icon(Icons.add))],
       ),
       body: _groceryItems.isEmpty
-          ? display_noItem(context)
+          ? _displayNoItem(context)
           : ListView.builder(
               itemCount: _groceryItems.length,
-              itemBuilder: (ctx, idx) => ListTile(
-                    title: Text(_groceryItems[idx].name),
-                    leading: Container(
-                      height: 24,
-                      width: 24,
-                      color: _groceryItems[idx].category.color,
-                    ),
-                    trailing: Text(
-                      _groceryItems[idx].quantity.toString(),
+              itemBuilder: (ctx, idx) => Dismissible(
+                    onDismissed: (direction) {
+                      if (direction == DismissDirection.horizontal) {
+                        setState(() {
+                          _groceryItems.removeAt(idx);
+                        });
+                      }
+                    },
+                    key: ValueKey(_groceryItems[idx].id),
+                    child: ListTile(
+                      title: Text(_groceryItems[idx].name),
+                      leading: Container(
+                        height: 24,
+                        width: 24,
+                        color: _groceryItems[idx].category.color,
+                      ),
+                      trailing: Text(
+                        _groceryItems[idx].quantity.toString(),
+                      ),
                     ),
                   )),
     );
   }
 
-  Center display_noItem(BuildContext context) {
+  Center _displayNoItem(BuildContext context) {
     return Center(
         child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
