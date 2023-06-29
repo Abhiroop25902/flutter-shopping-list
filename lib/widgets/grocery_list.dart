@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_ui_auth/firebase_ui_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shopping_list/models/grocery_item.dart';
 import 'package:shopping_list/widgets/new_item.dart';
@@ -30,6 +32,36 @@ class _GroceryListState extends State<GroceryList> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 8.0),
+          child: InkWell(
+            child: const UserAvatar(),
+            onTap: () {
+              showDialog(
+                  context: context,
+                  builder: (context) {
+                    return AlertDialog(
+                      title: const Text('Sign Out?'),
+                      content: const Text('Do you want to Sign Out?'),
+                      actions: [
+                        TextButton(
+                            onPressed: () {
+                              FirebaseAuth.instance.signOut();
+                              Navigator.of(context).pop();
+                              Navigator.popAndPushNamed(context, '/sign-in');
+                            },
+                            child: const Text('Yes')),
+                        ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                            child: const Text('No')),
+                      ],
+                    );
+                  });
+            },
+          ),
+        ),
         title: const Text('Your Groceries'),
         actions: [IconButton(onPressed: _addItem, icon: const Icon(Icons.add))],
       ),

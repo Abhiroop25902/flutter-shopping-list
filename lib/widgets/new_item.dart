@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shopping_list/data/categories.dart';
 import 'package:shopping_list/models/category.dart';
@@ -18,20 +19,47 @@ class _NewItemState extends State<NewItem> {
   int _enteredQuantity = 1;
   Category _selectedCategory = categories[Categories.vegetables]!;
 
-  void _saveItem() {
+  void _saveItem() async {
     if (_formKey.currentState?.validate() ?? false) {
       _formKey.currentState?.save();
 
+      if (FirebaseAuth.instance.currentUser == null) {
+        showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+                  title: const Text('Alert'),
+                  content: const Text(
+                      'Error in saving data, user no signed in correctly'),
+                  actions: [
+                    TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        child: const Text('Exit'))
+                  ],
+                ));
+        return;
+      }
+
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+
+      final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+
       final url = Uri.https('shopping-list-11411-default-rtdb.firebaseio.com',
-          'user/1/shopping-list.json');
+          'user/$userId/shopping-list.json', {"auth": idToken});
 
       http.post(url,
-          headers: {'Content-Type': 'application/json'},
-          body: json.encode({
-            'name': _enteredName,
-            'quantity': _enteredQuantity,
-            'category': _selectedCategory.title,
-          }));
+          headers: {
+            'Content-Type': 'application/json',
+            'auth': "{uid: $userId}"
+          },
+          body: json.encode(
+            {
+              'name': _enteredName,
+              'quantity': _enteredQuantity,
+              'category': _selectedCategory.title,
+            },
+          ));
 
       // Navigator.of(context).pop();
     }
