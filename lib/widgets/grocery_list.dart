@@ -20,7 +20,6 @@ class _GroceryListState extends State<GroceryList> {
 
   @override
   void initState() {
-    _loadItems();
     super.initState();
   }
 
@@ -40,7 +39,7 @@ class _GroceryListState extends State<GroceryList> {
             ));
   }
 
-  void _loadItems() async {
+  Future<List<GroceryItem>> _loadItems() async {
     if (FirebaseAuth.instance.currentUser == null) {
       _showError('Error in saving data, user not signed in correctly');
     }
@@ -54,8 +53,9 @@ class _GroceryListState extends State<GroceryList> {
 
     final response = await http.get(url);
 
-    if (response.statusCode != 200) {
-      _showError((jsonDecode(response.body) as Map<String, dynamic>)['error']);
+    if (response.statusCode >= 400) {
+      throw ErrorWidget.withDetails(
+          message: 'Failed to fetch data, Please try again later.');
     }
 
     final Map<String, dynamic> listData = json.decode(response.body);
@@ -74,10 +74,8 @@ class _GroceryListState extends State<GroceryList> {
           quantity: item.value['quantity'],
           category: category));
     }
-
-    setState(() {
-      _groceryItems = loadedItems;
-    });
+    _groceryItems = loadedItems;
+    return loadedItems;
   }
 
   void _addItem() async {
@@ -131,31 +129,47 @@ class _GroceryListState extends State<GroceryList> {
         title: const Text('Your Groceries'),
         actions: [IconButton(onPressed: _addItem, icon: const Icon(Icons.add))],
       ),
-      body: _groceryItems.isEmpty
-          ? _displayNoItem(context)
-          : ListView.builder(
-              itemCount: _groceryItems.length,
-              itemBuilder: (ctx, idx) => Dismissible(
-                    onDismissed: (direction) {
-                      if (direction == DismissDirection.horizontal) {
-                        setState(() {
-                          _groceryItems.removeAt(idx);
-                        });
-                      }
-                    },
-                    key: ValueKey(_groceryItems[idx].id),
-                    child: ListTile(
-                      title: Text(_groceryItems[idx].name),
-                      leading: Container(
-                        height: 24,
-                        width: 24,
-                        color: _groceryItems[idx].category.color,
-                      ),
-                      trailing: Text(
-                        _groceryItems[idx].quantity.toString(),
-                      ),
-                    ),
-                  )),
+      body: FutureBuilder(
+          future: _loadItems(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Center(
+                child: Text((snapshot.error as ErrorWidget).message),
+              );
+            }
+
+            if (!snapshot.hasData) {
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+
+            return _groceryItems.isEmpty
+                ? _displayNoItem(context)
+                : ListView.builder(
+                    itemCount: _groceryItems.length,
+                    itemBuilder: (ctx, idx) => Dismissible(
+                          onDismissed: (direction) {
+                            if (direction == DismissDirection.horizontal) {
+                              setState(() {
+                                _groceryItems.removeAt(idx);
+                              });
+                            }
+                          },
+                          key: ValueKey(_groceryItems[idx].id),
+                          child: ListTile(
+                            title: Text(_groceryItems[idx].name),
+                            leading: Container(
+                              height: 24,
+                              width: 24,
+                              color: _groceryItems[idx].category.color,
+                            ),
+                            trailing: Text(
+                              _groceryItems[idx].quantity.toString(),
+                            ),
+                          ),
+                        ));
+          }),
     );
   }
 
