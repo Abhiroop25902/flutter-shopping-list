@@ -51,35 +51,40 @@ class _GroceryListState extends State<GroceryList> {
     final url = Uri.https('shopping-list-11411-default-rtdb.firebaseio.com',
         'user/$userId/shopping-list.json', {"auth": idToken});
 
-    final response = await http.get(url);
+    try {
+      final response = await http.get(url);
 
-    if (response.statusCode >= 400) {
+      if (response.statusCode >= 400) {
+        throw ErrorWidget.withDetails(
+            message: 'Failed to fetch data, Please try again later.');
+      }
+
+      if (jsonDecode(response.body) == null) {
+        return [];
+      }
+
+      final Map<String, dynamic> listData = json.decode(response.body);
+
+      final List<GroceryItem> loadedItems = [];
+
+      for (final item in listData.entries) {
+        final category = categories.entries
+            .firstWhere(
+                (catItem) => catItem.value.title == item.value['category'])
+            .value;
+
+        loadedItems.add(GroceryItem(
+            id: item.key,
+            name: item.value['name'],
+            quantity: item.value['quantity'],
+            category: category));
+      }
+      _groceryItems = loadedItems;
+      return loadedItems;
+    } catch (error) {
       throw ErrorWidget.withDetails(
-          message: 'Failed to fetch data, Please try again later.');
+          message: 'Something went wrong! Please try again later.');
     }
-
-    if (jsonDecode(response.body) == null) {
-      return [];
-    }
-
-    final Map<String, dynamic> listData = json.decode(response.body);
-
-    final List<GroceryItem> loadedItems = [];
-
-    for (final item in listData.entries) {
-      final category = categories.entries
-          .firstWhere(
-              (catItem) => catItem.value.title == item.value['category'])
-          .value;
-
-      loadedItems.add(GroceryItem(
-          id: item.key,
-          name: item.value['name'],
-          quantity: item.value['quantity'],
-          category: category));
-    }
-    _groceryItems = loadedItems;
-    return loadedItems;
   }
 
   Future<bool?> _removeItem(GroceryItem item) async {
