@@ -78,6 +78,28 @@ class _GroceryListState extends State<GroceryList> {
     return loadedItems;
   }
 
+  Future<bool?> _removeItem(GroceryItem item) async {
+    if (FirebaseAuth.instance.currentUser == null) {
+      _showError('Error in saving data, user not signed in correctly');
+    }
+
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+
+    final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+
+    final url = Uri.https('shopping-list-11411-default-rtdb.firebaseio.com',
+        'user/$userId/shopping-list/${item.id}.json', {"auth": idToken});
+
+    final response = await http.delete(url);
+
+    if (response.statusCode >= 400) {
+      _showError((jsonDecode(response.body) as Map<String, dynamic>)['error']);
+      return false;
+    }
+
+    return true;
+  }
+
   void _addItem() async {
     final newGroceryItem = await Navigator.of(context).push<GroceryItem>(
       MaterialPageRoute(
@@ -90,6 +112,32 @@ class _GroceryListState extends State<GroceryList> {
     setState(() {
       _groceryItems.add(newGroceryItem);
     });
+  }
+
+  Center _displayNoItem(BuildContext context) {
+    return Center(
+        child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          'Uh-Oh, No Items Found',
+          style: Theme.of(context)
+              .textTheme
+              .headlineMedium!
+              .copyWith(color: Theme.of(context).colorScheme.onBackground),
+        ),
+        const SizedBox(
+          height: 10,
+        ),
+        Text(
+          'Please Add a Grocery Item',
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium!
+              .copyWith(color: Theme.of(context).colorScheme.onBackground),
+        ),
+      ],
+    ));
   }
 
   @override
@@ -149,8 +197,11 @@ class _GroceryListState extends State<GroceryList> {
                 : ListView.builder(
                     itemCount: _groceryItems.length,
                     itemBuilder: (ctx, idx) => Dismissible(
+                          confirmDismiss: (direction) =>
+                              _removeItem(_groceryItems[idx]),
                           onDismissed: (direction) {
-                            if (direction == DismissDirection.horizontal) {
+                            if (direction == DismissDirection.endToStart ||
+                                direction == DismissDirection.startToEnd) {
                               setState(() {
                                 _groceryItems.removeAt(idx);
                               });
@@ -171,31 +222,5 @@ class _GroceryListState extends State<GroceryList> {
                         ));
           }),
     );
-  }
-
-  Center _displayNoItem(BuildContext context) {
-    return Center(
-        child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          'Uh-Oh, No Items Found',
-          style: Theme.of(context)
-              .textTheme
-              .headlineMedium!
-              .copyWith(color: Theme.of(context).colorScheme.onBackground),
-        ),
-        const SizedBox(
-          height: 10,
-        ),
-        Text(
-          'Please Add a Grocery Item',
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium!
-              .copyWith(color: Theme.of(context).colorScheme.onBackground),
-        ),
-      ],
-    ));
   }
 }
